@@ -23,8 +23,24 @@ try {
 	console.log(error);
 }
 
+const signInSchema = Joi.object({
+	email: Joi.string().email().required(),
+	password: Joi.string().invalid('').required()
+})
+
+const signUpSchema = Joi.object({
+	name: Joi.string().invalid('').required(),
+	email: Joi.string().email().required(),
+	password: Joi.string().invalid('').required()
+})
+
 server.post('/sign-up', async (req, res) => {
 	const { name, email, password } = req.body;
+	const signUpValidation = signUpSchema.validate({ name, email, password}, {abortEarly: false})
+
+	if ( signUpValidation.error ) {
+		return res.sendStatus(422)
+	}
 
 	try {
 		if (await db.collection('users').findOne({ email })) {
@@ -47,6 +63,11 @@ server.post('/sign-up', async (req, res) => {
 
 server.post('/sign-in', async (req, res) => {
 	const { email, password } = req.body;
+	const signInValidation = signInSchema.validate({email, password}, {abortEarly: false})
+
+	if (signInValidation.error) {
+		return res.send(422)
+	}
 
 	const user = await db.collection('users').findOne({ email });
 
@@ -72,8 +93,45 @@ server.post('/sign-in', async (req, res) => {
 		});
 	}
 
-	res.send(token);
+	res.send({token, name: user.name});
 });
+
+server.post('/transactions', async (req, res) => {
+	const { value, description, type } = req.body
+	const { authorization } = req.headers
+	const token = authorization?.replace('Bearer ', '')
+
+	if (!token) return res.sendStatus(401)
+
+	const session = await db.collection('sessions').findOne({ token })
+
+	if (!session) return res.sendStatus(401)
+
+	await db.collection('transactions').insertOne({
+		date: dayjs(Date.now()).format('DD/MM'),
+		value,
+		description,
+		type,
+		userId: session.userId
+	})
+
+	res.sendStatus(201)
+})
+
+server.get('/wallet', async (req, res) => {
+	const {authorization} = req.headers
+	const token = authorization?.replace('Bearer ', '')
+
+	if (!token) return res.sendStatus(401)
+
+	const session = await db.collection('sessions').findOne({ token })
+
+	if (!session) return res.sendStatus(401)
+
+	const transactions = await db.collection('transactions').find({userId: session.userId}).toArray()
+
+	res.send(transactions.reverse())
+})
 
 const PORT = 5000;
 
