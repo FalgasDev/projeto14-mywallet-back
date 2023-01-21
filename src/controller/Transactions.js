@@ -1,10 +1,17 @@
 import dayjs from 'dayjs';
 import db from '../config/database.js';
+import { createTransactionSchema } from '../schemas/TransactionsSchema.js';
 
 export async function transactions(req, res) {
 	const { value, description, type } = req.body;
 	const { authorization } = req.headers;
 	const token = authorization?.replace('Bearer ', '');
+	const {error} = createTransactionSchema.validate({value, description, type}, {abortEarly: false})
+
+	if (error) {
+		const errorMessages = error.details.map(err => err.message)
+		return res.status(422).send(errorMessages)
+	}
 
 	if (!token) return res.sendStatus(401);
 

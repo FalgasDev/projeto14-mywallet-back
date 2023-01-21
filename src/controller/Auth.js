@@ -10,9 +10,7 @@ export async function signIn(req, res) {
 		{ abortEarly: false }
 	);
 
-	if (signInValidation.error) {
-		return res.sendStatus(422);
-	}
+	if (signInValidation.error) return res.sendStatus(422);
 
 	const user = await db.collection('users').findOne({ email });
 
@@ -42,20 +40,20 @@ export async function signIn(req, res) {
 }
 
 export async function signUp(req, res) {
-	const { name, email, password } = req.body;
+	const { name, email, password, confirm } = req.body;
 	const signUpValidation = signUpSchema.validate(
-		{ name, email, password },
+		{ name, email, password, confirm },
 		{ abortEarly: false }
 	);
 
-	if (signUpValidation.error) {
-		return res.sendStatus(422);
-	}
+	if (signUpValidation.error) return res.sendStatus(422);
+
+	if (password !== confirm)
+		return res.status(409).send('As senhas não conferem');
 
 	try {
-		if (await db.collection('users').findOne({ email })) {
+		if (await db.collection('users').findOne({ email }))
 			return res.status(409).send('Você já tem uma conta');
-		}
 
 		const passwordHashed = bcrypt.hashSync(password, 10);
 
