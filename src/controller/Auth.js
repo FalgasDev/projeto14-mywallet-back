@@ -1,17 +1,10 @@
 import bcrypt from 'bcrypt';
 import { v4 as uuid } from 'uuid';
 import db from '../config/database.js';
-import { signInSchema, signUpSchema } from '../schemas/AuthSchema.js';
 
 export async function signIn(req, res) {
 	const { email, password } = req.body;
-	const signInValidation = signInSchema.validate(
-		{ email, password },
-		{ abortEarly: false }
-	);
-
-	if (signInValidation.error) return res.sendStatus(422);
-
+	
 	const user = await db.collection('users').findOne({ email });
 
 	if (!user) return res.status(401).send('Usuário ou senha incorretos');
@@ -40,16 +33,7 @@ export async function signIn(req, res) {
 }
 
 export async function signUp(req, res) {
-	const { name, email, password, confirm } = req.body;
-	const signUpValidation = signUpSchema.validate(
-		{ name, email, password, confirm },
-		{ abortEarly: false }
-	);
-
-	if (signUpValidation.error) return res.sendStatus(422);
-
-	if (password !== confirm)
-		return res.status(409).send('As senhas não conferem');
+	const { name, email, password } = req.body;
 
 	try {
 		if (await db.collection('users').findOne({ email }))
